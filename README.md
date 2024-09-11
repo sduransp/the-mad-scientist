@@ -1,1 +1,1 @@
-# the-mad-scientist
+# The Mad Scientist
