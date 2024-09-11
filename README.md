@@ -5,9 +5,9 @@ This repository provides a comprehensive solution for automating the development
 
 ## Features:
 
-	•	Automated Literature Review: Scans vast academic databases to generate comprehensive reviews on specific topics, identifying key research papers, summarizing findings, and highlighting trends.
-	•	Gap Analysis: Utilizes advanced algorithms to identify gaps in the current literature, suggesting novel areas for research exploration.
-	•	Hypothesis Generation: Based on the literature review and identified gaps, the tool proposes testable hypotheses relevant to the research domain.
-	•	Experimental Design: Suggests potential experiments, methods, and statistical tests to evaluate proposed hypotheses.
-	•	Paper Structuring: Generates an initial draft of a paper, organizing the content in a standard academic structure (Introduction, Methods, Results, Discussion, etc.).
-	•	Writing Assistance: Offers recommendations for improving academic writing quality, ensuring proper flow, clarity, and compliance with scientific standards.
+1. **Automated Literature Review:** Scans vast academic databases to generate comprehensive reviews on specific topics, identifying key research papers, summarizing findings, and highlighting trends.
+2. **Gap Analysis:** Utilizes advanced algorithms to identify gaps in the current literature, suggesting novel areas for research exploration.
+3. **Hypothesis Generation:** Based on the literature review and identified gaps, the tool proposes testable hypotheses relevant to the research domain.
+4. **Experimental Design:** Suggests potential experiments, methods, and statistical tests to evaluate proposed hypotheses.
+5. **Paper Structuring:** Generates an initial draft of a paper, organizing the content in a standard academic structure (Introduction, Methods, Results, Discussion, etc.).
+6. **Writing Assistance:** Offers recommendations for improving academic writing quality, ensuring proper flow, clarity, and compliance with scientific standards.
