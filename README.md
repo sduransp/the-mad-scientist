@@ -1,5 +1,5 @@
 # The Mad Scientist
-This repository provides a comprehensive solution for automating the development and writing of academic papers, particularly focusing on review articles. By leveraging Generative AI, this tool aditionally conducts literature reviews, identifies research gaps, proposes hypotheses, and even suggests experimental designs to test these hypotheses.
+This repository provides a comprehensive solution for automating the development and writing of academic papers, particularly focusing on review articles. By leveraging Generative AI, this tool additionally conducts literature reviews, identifies research gaps, proposes hypotheses, and even suggests experimental designs to test these hypotheses.
 
 ![Mad Scientist](https://t4.ftcdn.net/jpg/05/65/84/81/360_F_565848103_1CJV2xSJOf3P48bOJLUxv3vrfpP6s06w.jpg)
 
