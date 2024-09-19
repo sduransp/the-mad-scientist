@@ -8,6 +8,10 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from prompt_store.prompt_manager import PromptManager
+
 class PaperProcessor(BaseModel):
     """
     Model for processing the scientific article information.
@@ -41,6 +45,7 @@ class Preprocessor:
         )
 
         self.langchain_client = AzureChatOpenAI(**model_params)
+        self.prompt_manager = PromptManager()
 
     def enumerate_files(self):
         """
@@ -58,16 +63,22 @@ class Preprocessor:
         """
         Processing PDF files
         """
+        # Looping over all pdf files
         for pdf_file in self.pdf_files:
+            # Instantiating the pdf loader
             loader = PyPDFLoader(pdf_file)
+            # Loading the document
             documents = loader.load()
+            # Obtaining metadata about the paper
             title, authors, year, citation = self.extract_metadata_from_document(documents[0].page_content[0:1000])
-            
+            # Processing documents in the paper
             for document in documents:
+                # Obtaining the text
                 text = document.page_content
-                # Parsear el texto a partir del Abstract o Introducción
+                # Parsing text from Abstract or introduction
                 parsed_text = self.parse_from_abstract_or_introduction(text)
                 if parsed_text:
+                    # Dividing the text into sentences and attaching the metadata to it
                     self.extract_sentences_and_metadata(parsed_text, title, authors, year, citation)
         
 
@@ -81,42 +92,25 @@ class Preprocessor:
         year = None
         citation = None
 
-        # Defining the message text
-        template_str = """
-            You are an expert in parsing scientific articles. 
-            Given the input text which contains the first page of a scientific paper, extract the following information:
-            1. The title of the paper.
-            2. The authors (in the order they appear).
-            3. The year of publication.
-            4. The citation in APA format.
-
-            The input text will be the first page of the paper, which contains the title, authors, and publication year. 
-            The output should consist of a JSON object containing the following fields:
-            - Title: The full title of the paper.
-            - Authors: A list of the authors in the format 'Last name, First initial.' (e.g., Smith, J.)
-            - Year: The year of publication.
-            - Citation: A citation in APA format (e.g., "Smith, J., & Doe, J. (2020). Title of the paper. Journal Name, Volume(Issue), Pages.")
-
-            Return only a valid JSON object.
-            Input Text: {document}
-
-            Task:
-            Extract the title, authors, year, and generate an APA citation from the provided input text.
-            """
-
+        # Getting prompt
+        template_str = self.prompt_manager.get_prompt("document_metadata",0)
+        # Creating prompt template
         prompt_template = PromptTemplate(
             template = template_str,
             input_variables = ["document"],
             partial_variables={"format_instructions":JsonOutputParser(pydantic_object=PaperProcessor).get_format_instructions()}
         )
-
+        # Defining the classification chain
         classification_chain = prompt_template | self.langchain_client | JsonOutputParser(pydantic_object = PaperProcessor)
 
         try:
+            # Invoking the classification chain 
             output = classification_chain.invoke({"document": document})
         except:
+            # Raising runtime error
             raise RuntimeError(F"Error while parsing the paper author information")
         
+        # Obtaining information about the paper
         title, authors, year, citation = output["Title"], output["Authors"], output["Year"], output["Citation"]
 
         return(title, authors, year, citation)
@@ -125,17 +119,23 @@ class Preprocessor:
         """
         Find Abstract or Introduction and return text from there
         """
+        # Defining the regex patter and compiling it
         abstract_regex = re.compile(r"(Abstract|Resumen|Introduction|Introducción)", re.IGNORECASE)
+        # Evaluating whether it finds a match 
         match = abstract_regex.search(text)
+        # If match, return text from the matching section
         if match:
             return text[match.start():]  
+        # Otherwise, return full text
         return text
     def split_into_sentences(self,text):
         """
         Split text into sentences based on typical sentence-ending punctuation (., !, ?) 
         followed by a space and a capital letter or a digit at the start of the next sentence.
         """
+        # Defining a regex pattern for extracting proper sentences
         sentence_endings = re.compile(r'(?<=[.!?])\s+(?=[A-Z0-9])')
+        # Spliting text into proper sentences
         sentences = sentence_endings.split(text)
         return sentences
     def extract_sentences_and_metadata(self, text, title, authors, year, citation):

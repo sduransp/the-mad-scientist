@@ -1,0 +1,20 @@
+document_metadata:
+- template: 
+    You are an expert in parsing scientific articles. 
+    Given the input text which contains the first page of a scientific paper, extract the following information.
+    1. The title of the paper.
+    2. The authors (in the order they appear).
+    3. The year of publication.
+    4. The citation in APA format.
+
+    The input text will be the first page of the paper, which contains the title, authors, and publication year. 
+    The output should consist of a JSON object containing the following fields.
+    - Title= The full title of the paper.
+    - Authors= A list of the authors in the format 'Last name, First initial.' (e.g., Smith, J.)
+    - Year= The year of publication.
+    - Citation= A citation in APA format (e.g., "Smith, J., & Doe, J. (2020). Title of the paper. Journal Name, Volume(Issue), Pages.")
+
+    Return only a valid JSON object.
+    Input Text= {document}
+
+    Task= Extract the title, authors, year, and generate an APA citation from the provided input text.
