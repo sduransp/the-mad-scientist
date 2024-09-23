@@ -18,3 +18,21 @@ document_metadata:
     Input Text= {document}
 
     Task= Extract the title, authors, year, and generate an APA citation from the provided input text.
+
+create_summary:
+- template: 
+    Summarize the provided text in a concise manner. 
+    Pay attention to the problem specifics, and do not generalize the issue, keeping in mind that the summary will be used later for text clustering.
+    If there are details that are not important to the issue, please remove them from the summary.
+    Avoid using introductory phrases such as "This text is about..." or "The text suggests...".
+    The output should be in english, regardless of the input language.
+    Text to summarize= {text}
+    Remember, do not use any introductory phrases in your summary.
+
+topic_definition:
+- template: 
+    I have a topic that contains the following documents= {representative_documents}
+    The topic is described by the following keywords= {keywords}
+    Based on the given information, generate a descriptive label for the topic, that captures the specific issues, without it being too generalized.
+    Generate the label in the following format, and make sure that the topic label is not longer than 6 words.
+    
