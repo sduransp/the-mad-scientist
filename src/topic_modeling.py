@@ -19,7 +19,6 @@ class BERTTopicModeler:
         Initializes the model with the necessary API keys and configures external services.
 
         """
-        # self.client = openai.OpenAI(api_key=os.getenv("OPENAI_ADA"))
         self.client = AzureOpenAI(
             api_version="2024-02-01",
             azure_endpoint="https://genai-nexus.api.corpinter.net/apikey/",
@@ -27,6 +26,11 @@ class BERTTopicModeler:
         )
         self.openai_embedder = OpenAIBackend(self.client, "text-embedding-ada-002")
         self.model = None
+        self.client_text = AzureOpenAI(
+            api_version=os.getenv("OPENAI_API_VERSION"),
+            azure_endpoint=os.getenv("OPENAI_ENDPOINT"),
+            api_key=os.getenv("NEXT_API_KEY")
+        )
 
     def clustering(self, documents: List[str], seed: int) -> Dict:
         """
@@ -40,19 +44,58 @@ class BERTTopicModeler:
         Returns:
             Dict: Dictionary with generated topic information.
         """
-        umap_params = [{'n_neighbors': 50, 'n_components': 10, 'min_dist': 0, 'metric': 'cosine'}]
-        hdbscan_params = [{'min_cluster_size': 2, 'min_samples': 3}]
-        ngram_range = (1, 3)
+        # Calculating number of documents
+        num_documents = len(documents)
         
-        # Create UMAP and HDBSCAN models
-        umap_model = UMAP(**umap_params[0])
-        hdbscan_model = HDBSCAN(**hdbscan_params[0], metric="euclidean", cluster_selection_method='eom', prediction_data=True)
+        # Adjust UMAP parameters
+        n_neighbors = max(2, min(15, int(0.05 * num_documents)))
+        n_components = 5 if num_documents < 500 else 10
+        umap_model = UMAP(
+            n_neighbors=n_neighbors,
+            n_components=n_components,
+            min_dist=0.0,
+            metric='cosine',
+            random_state=seed
+        )
+        
+        # Adjust HDBSCAN parameters
+        min_cluster_size = max(2, int(0.01 * num_documents))
+        min_samples = max(1, int(0.002 * num_documents))
+        hdbscan_model = HDBSCAN(
+            min_cluster_size=min_cluster_size,
+            min_samples=min_samples,
+            metric="euclidean",
+            cluster_selection_method='eom',
+            prediction_data=True
+        )
+        
+        # Adjust ngram_range and min_df
+        if num_documents < 100:
+            ngram_range = (1, 1)
+            min_df = 1
+        elif num_documents < 1000:
+            ngram_range = (1, 2)
+            min_df = 2
+        else:
+            ngram_range = (1, 3)
+            min_df = 5
         
         # Define representation models for topics
-        main_representation_model = KeyBERTInspired(top_n_words=10, nr_repr_docs=5, nr_samples=50, random_state=seed)
-        aspect_representation_model1 = PartOfSpeech(model="en_core_web_sm", top_n_words=10)
-        aspect_representation_model2 = [KeyBERTInspired(top_n_words=20), MaximalMarginalRelevance(diversity=0.3)]
-        
+        main_representation_model = KeyBERTInspired(
+            top_n_words=10,
+            nr_repr_docs=5,
+            nr_samples=50,
+            random_state=seed
+        )
+        aspect_representation_model1 = PartOfSpeech(
+            model="en_core_web_sm",
+            top_n_words=10
+        )
+        aspect_representation_model2 = [
+            KeyBERTInspired(top_n_words=20),
+            MaximalMarginalRelevance(diversity=0.3)
+        ]
+
         representation_model = {
             "Main": main_representation_model,
             "Aspect1": aspect_representation_model1,
@@ -60,7 +103,11 @@ class BERTTopicModeler:
         }
 
         # Configure the vectorizer and BERTopic model
-        vectorizer_model = CountVectorizer(min_df=3, stop_words='english', ngram_range=ngram_range)
+        vectorizer_model = CountVectorizer(
+            min_df=min_df,
+            stop_words='english',
+            ngram_range=ngram_range
+        )
         self.model = BERTopic(
             umap_model=umap_model,
             hdbscan_model=hdbscan_model,
@@ -74,8 +121,6 @@ class BERTTopicModeler:
 
         print("Fitting the BERTopic model...")
         topics, probs = self.model.fit_transform(documents)
-        new_topics = self.model.reduce_outliers(documents, topics, probs)
-        self.model.update_topics(documents, new_topics)
 
         # Extract topic information
         topic_info = self.model.get_topic_info()
@@ -83,7 +128,7 @@ class BERTTopicModeler:
         
         return {
             "model": self.model,
-            "topics": new_topics,
+            "topics": topics,
             "topic_info": topic_info,
             "topic_descriptions": topic_descriptions
         }
@@ -127,26 +172,39 @@ class BERTTopicModeler:
             Based on the given information, generate a descriptive label for the topic, that captures the specific issues, without it being too generalized.
             Generate the label in the following format, and make sure that the topic label is not longer than 6 words."""
         
-        response = self.client.Completion.create(
-            engine="gpt4-turbo",
-            prompt=prompt,
-            max_tokens=150,
-            temperature=0
+        response = self.client_text.chat.completions.create(
+            model="gpt4-turbo",  # e.g. gpt-35-instant
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
         )
-        return response.choices[0].text.strip()
 
-    def save_topics_to_json(self, topic_descriptions: Dict, result_path: str):
+        return response.choices[0].message.content
+    
+    def _postprocess_with_topics(self, data: List[Dict], topics: List[int]) -> List[Dict]:
         """
-        Saves the topic descriptions to a JSON file.
+        Adds the corresponding topic number to each element in the metadata of the input data.
 
         Args:
-            topic_descriptions (Dict): Topic descriptions generated by BERTopic.
-            result_path (str): Path where the JSON file will be stored.
-        """
-        with open(os.path.join(result_path, "topic_data.json"), 'w') as json_file:
-            json.dump(topic_descriptions, json_file, indent=4)
+            data (List[Dict]): The original data, a list of dictionaries with "sentence" and "metadata".
+            topics (List[int]): The list of topics corresponding to each item in the data.
 
-    def unsupervised_bertopic(self, data: List[Dict], result_path: str, seed: int = 42):
+        Returns:
+            List[Dict]: The updated data with the "topic" added to the metadata of each item.
+        """
+        if len(data) != len(topics):
+            raise ValueError("The length of data and topics must match.")
+    
+        # Loop over each item in data and add the corresponding topic to its metadata
+        for i, item in enumerate(data):
+            item['metadata']['topic'] = topics[i]
+        
+        return data
+
+    def unsupervised_bertopic(self, data: List[Dict], seed: int = 42):
         """
         Performs unsupervised topic modeling using BERTopic.
 
@@ -160,23 +218,27 @@ class BERTTopicModeler:
 
         print("Starting clustering...")
         clustering_result = self.clustering(sentences, seed=seed)
-        
-        # Save the topic descriptions in a JSON file
-        self.save_topics_to_json(clustering_result["topic_descriptions"], result_path)
+
+        # Postprocessing results
+        print("Postprocessing data...")
+        postprocessed_data = self._postprocess_with_topics(data=data,topics=clustering_result["topics"])
+
+        return postprocessed_data, clustering_result["topic_descriptions"]
 
 if __name__ == "__main__":
 
     # Example data
-    data = [
-        {"sentence": "This is the first sentence.", "metadata": {}},
-        {"sentence": "Another sentence to cluster.", "metadata": {}},
-        {"sentence": "Yet another one for topic modeling.", "metadata": {}}
-    ]
-    
-    result_path = "./results"
+    from data_preprocessing import Preprocessor
+    paper_folder = r"/Users/sduran/Desktop/carpeta sin título"
+
+    preprocessor = Preprocessor(paper_folder)
+    preprocessor.enumerate_files()
+    preprocessor.process_pdfs()
+    data = preprocessor.data
+
     
     # Initialize the topic modeler
     topic_modeler = BERTTopicModeler()
     
     # Perform clustering and save the results
-    topic_modeler.unsupervised_bertopic(data, result_path)
+    topic_modeler.unsupervised_bertopic(data)

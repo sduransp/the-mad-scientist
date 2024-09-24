@@ -31,7 +31,7 @@ class Preprocessor:
 
         model_params = {
             "azure_endpoint": os.getenv("OPENAI_ENDPOINT"),
-            "api_key":os.getenv("OPENAI_KEY"),
+            "api_key":os.getenv("NEXT_API_KEY"),
             "api_version":os.getenv("OPENAI_API_VERSION"),
             "tiktoken_model_name": "gpt4-turbo",
             "azure_deployment": "gpt4-turbo",
@@ -41,7 +41,7 @@ class Preprocessor:
         self.client = AzureOpenAI(
             api_version=os.getenv("OPENAI_API_VERSION"),
             azure_endpoint=os.getenv("OPENAI_ENDPOINT"),
-            api_key=os.getenv("OPENAI_KEY")
+            api_key=os.getenv("NEXT_API_KEY")
         )
 
         self.langchain_client = AzureChatOpenAI(**model_params)
@@ -64,6 +64,7 @@ class Preprocessor:
         Processing PDF files
         """
         # Looping over all pdf files
+        print(f"The list contains {len(self.pdf_files)} files")
         for pdf_file in self.pdf_files:
             # Instantiating the pdf loader
             loader = PyPDFLoader(pdf_file)
@@ -106,8 +107,9 @@ class Preprocessor:
         try:
             # Invoking the classification chain 
             output = classification_chain.invoke({"document": document})
-        except:
+        except Exception as e:
             # Raising runtime error
+            print(e)
             raise RuntimeError(F"Error while parsing the paper author information")
         
         # Obtaining information about the paper
