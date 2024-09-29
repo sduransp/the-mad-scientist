@@ -20,7 +20,7 @@ class BERTTopicModeler:
 
         """
         self.client = AzureOpenAI(
-            api_version="2024-02-01",
+            api_version="2023-07-01-preview",
             azure_endpoint="https://genai-nexus.api.corpinter.net/apikey/",
             api_key=os.getenv("OPENAI_ADA")
         )
@@ -236,9 +236,23 @@ if __name__ == "__main__":
     preprocessor.process_pdfs()
     data = preprocessor.data
 
+    print(data)
     
     # Initialize the topic modeler
     topic_modeler = BERTTopicModeler()
     
     # Perform clustering and save the results
-    topic_modeler.unsupervised_bertopic(data)
+    postprocessed_data, top_description = topic_modeler.unsupervised_bertopic(data)
+
+    # Guarda los resultados en un archivo JSON
+    results = {
+        "data": data,
+        "postprocessed_data": postprocessed_data,
+        "topic_description": top_description
+    }
+
+    # Guarda el archivo JSON en el directorio actual
+    with open('clustering_results.json', 'w') as json_file:
+        json.dump(results, json_file, indent=4)
+
+    print("Los resultados han sido guardados en 'clustering_results.json'")
