@@ -59,8 +59,8 @@ class BERTTopicModeler:
         )
         
         # Adjust HDBSCAN parameters
-        min_cluster_size = max(2, int(0.01 * num_documents))
-        min_samples = max(1, int(0.002 * num_documents))
+        min_cluster_size = max(2, int(0.05 * num_documents))
+        min_samples = max(1, int(0.01 * num_documents))
         hdbscan_model = HDBSCAN(
             min_cluster_size=min_cluster_size,
             min_samples=min_samples,
@@ -120,6 +120,9 @@ class BERTTopicModeler:
         )
 
         print("Fitting the BERTopic model...")
+        assert isinstance(documents, list), "Prepared documents should be a list."
+        assert all(isinstance(doc, str) for doc in documents), "All items in prepared documents should be strings."
+
         topics, probs = self.model.fit_transform(documents)
 
         # Extract topic information
@@ -254,5 +257,3 @@ if __name__ == "__main__":
     # Guarda el archivo JSON en el directorio actual
     with open('clustering_results.json', 'w') as json_file:
         json.dump(results, json_file, indent=4)
-
-    print("Los resultados han sido guardados en 'clustering_results.json'")

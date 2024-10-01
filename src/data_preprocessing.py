@@ -318,4 +318,3 @@ if __name__ == "__main__":
     preprocessor = Preprocessor(paper_folder)
     preprocessor.enumerate_files()
     preprocessor.process_pdfs()
-    print(preprocessor.data)
