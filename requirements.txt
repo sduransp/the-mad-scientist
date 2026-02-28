@@ -1,0 +1,13 @@
+langchain>=0.2
+langchain-openai>=0.1.7
+openai>=1.13
+pydantic>=2
+pyyaml
+faiss-cpu
+scikit-learn
+umap-learn
+hdbscan
+bertopic
+sentence-transformers
+pypdf
+pandas
